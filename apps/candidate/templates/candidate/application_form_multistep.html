@@ -1,0 +1,745 @@
+{% extends 'candidate/base.html' %}
+
+{% block title %}Pinte Pinturas{% endblock %}
+
+{% block extra_css %}
+<style>
+    .logo-title-container {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        margin-bottom: 10px;
+    }
+    .logo-title-container img {
+        max-width: 120px;
+        height: auto;
+    }
+    .logo-title-container h1 {
+        margin: 0;
+        font-size: 2rem;
+    }
+    .required-note {
+        font-size: 0.85rem;
+        margin-bottom: 10px;
+        margin-top: 0px;
+    }
+    .track-link {
+        text-align: center;
+        margin-top: 30px;
+        padding-top: 10px;
+        border-top: 2px solid #e0e0e0;
+    }
+    
+    /* Multi-step styles */
+    .step-indicator {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 30px 0;
+        gap: 10px;
+    }
+    .step.hidden {
+        display: none;
+    }
+    .step-separator.hidden {
+        display: none;
+    }
+    .step {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .step-number {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #e0e0e0;
+        color: #666;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        transition: all 0.3s;
+    }
+    .step.active .step-number {
+        background: #007bff;
+        color: white;
+    }
+    .step.completed .step-number {
+        background: #28a745;
+        color: white;
+    }
+    .step-label {
+        font-size: 0.9rem;
+        color: #666;
+    }
+    .step.active .step-label {
+        color: #007bff;
+        font-weight: bold;
+    }
+    .step-separator {
+        width: 50px;
+        height: 2px;
+        background: #e0e0e0;
+    }
+    .step.completed + .step-separator {
+        background: #28a745;
+    }
+    
+    .form-step {
+        display: none;
+    }
+    .form-step.active {
+        display: block;
+    }
+    
+    .step-navigation {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 2px solid #e0e0e0;
+    }
+    
+    /* Questionnaire styles */
+    .questionnaire-section {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .question-card {
+        background: white;
+        border-radius: 6px;
+        padding: 20px;
+        margin-bottom: 15px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .question-text {
+        font-weight: 600;
+        margin-bottom: 15px;
+        color: #333;
+    }
+    .question-options {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .option-label {
+        display: flex;
+        align-items: center;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .option-label:hover {
+        border-color: #007bff;
+        background: #f8f9fa;
+    }
+    .option-label input {
+        margin-right: 10px;
+    }
+    .option-label input:checked + span {
+        font-weight: 600;
+        color: #007bff;
+    }
+    .questionnaire-loading {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+    .questionnaire-empty {
+        text-align: center;
+        padding: 40px;
+        background: white;
+        border-radius: 6px;
+        color: #666;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="logo-title-container">
+        <img src="/media/pinte-logo.png" alt="Pinte Logo" onerror="this.style.display='none'">
+        <div>
+            <h1>Pinte Pinturas</h1>
+            <p style="margin: 0; color: #666;">Preencha o formulário abaixo para se candidatar a uma vaga conosco</p>
+        </div>
+    </div>
+</div>
+
+<!-- Step Indicator -->
+<div class="step-indicator">
+    <div class="step active" data-step="1">
+        <div class="step-number">1</div>
+        <div class="step-label">Dados Pessoais</div>
+    </div>
+    <div class="step-separator" id="separator-1"></div>
+    <div class="step hidden" data-step="2" id="step-questionnaire">
+        <div class="step-number">2</div>
+        <div class="step-label">Questionário</div>
+    </div>
+    <div class="step-separator hidden" id="separator-2"></div>
+    <div class="step" data-step="3">
+        <div class="step-number">3</div>
+        <div class="step-label">Revisão</div>
+    </div>
+</div>
+
+<form method="post" enctype="multipart/form-data" novalidate autocomplete="off" id="applicationForm">
+    {% csrf_token %}
+    
+    <!-- Hidden field to store current step -->
+    <input type="hidden" name="current_step" id="currentStep" value="1">
+    
+    <!-- Hidden field to store questionnaire template ID -->
+    <input type="hidden" name="template_id" id="templateId" value="">
+    
+    <!-- Hidden field to store questionnaire answers -->
+    <input type="hidden" name="questionnaire_answers" id="questionnaireAnswers" value="">
+    
+    <!-- Hidden field for selected position -->
+    <input type="hidden" name="position_applied" id="position_applied" value="{{ selected_position }}">
+    
+    <!-- Show selected position -->
+    <div class="alert alert-info" style="margin-bottom: 20px;">
+        <strong>Cargo Selecionado:</strong> {{ selected_position }}
+        <a href="{% url 'position_selection' %}" class="float-end" style="font-size: 0.9em;">Alterar</a>
+    </div>
+    
+    <!-- STEP 1: Personal Information (existing form) -->
+    <div class="form-step active" data-step="1">
+        <!-- Personal Information Section -->
+        <div class="form-section">
+            <h3>Informações Pessoais</h3>
+            <div class="mb-3">
+                {{ form.full_name.label_tag }}
+                {{ form.full_name }}
+                {% if form.full_name.errors %}
+                    <div class="text-danger small mt-1">{{ form.full_name.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form.cpf.label_tag }}
+                    {{ form.cpf }}
+                    {% if form.cpf.errors %}
+                        <div class="text-danger small mt-1">{{ form.cpf.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                    {{ form.email.label_tag }}
+                    {{ form.email }}
+                    {% if form.email.errors %}
+                        <div class="text-danger small mt-1">{{ form.email.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form.phone_number.label_tag }}
+                    {{ form.phone_number }}
+                    {% if form.phone_number.errors %}
+                        <div class="text-danger small mt-1">{{ form.phone_number.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                    {{ form.date_of_birth.label_tag }}
+                    {{ form.date_of_birth }}
+                    {% if form.date_of_birth.errors %}
+                        <div class="text-danger small mt-1">{{ form.date_of_birth.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            <!-- Add all other form fields here as needed -->
+            <div class="mb-3">
+                {{ form.address.label_tag }}
+                {{ form.address }}
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form.city.label_tag }}
+                    {{ form.city }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    {{ form.state.label_tag }}
+                    {{ form.state }}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Professional Experience Formset -->
+        <div class="form-section">
+            <h3>Experiência Profissional</h3>
+            {{ experience_formset.management_form }}
+            <div id="experience-forms">
+                {% for form in experience_formset %}
+                    <div class="experience-form mb-3">
+                        {{ form.as_p }}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="step-navigation">
+            <div></div>
+            <button type="button" class="btn btn-primary btn-lg" id="step1NextBtn" onclick="handleStep1Next()">
+                Próximo →
+            </button>
+        </div>
+    </div>
+    
+    <!-- STEP 2: Questionnaire -->
+    <div class="form-step" data-step="2">
+        <div class="form-section">
+            <h3>Questionário da Vaga</h3>
+            <p class="text-muted">Responda às perguntas abaixo relacionadas à posição que você está se candidatando.</p>
+            
+            <div id="questionnaireContainer">
+                <div class="questionnaire-loading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="sr-only">Carregando questionário...</span>
+                    </div>
+                    <p class="mt-3">Carregando questionário...</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="step-navigation">
+            <button type="button" class="btn btn-secondary btn-lg" onclick="goToStep(1)">
+                ← Voltar
+            </button>
+            <button type="button" class="btn btn-primary btn-lg" onclick="goToStep(3)">
+                Próximo: Revisão →
+            </button>
+        </div>
+    </div>
+    
+    <!-- STEP 3: Review and Submit -->
+    <div class="form-step" data-step="3">
+        <div class="form-section">
+            <h3>Revisão da Candidatura</h3>
+            <p class="text-muted">Revise suas informações antes de enviar.</p>
+            
+            <div id="reviewContainer">
+                <!-- Will be populated by JavaScript -->
+            </div>
+            
+            <div class="alert alert-info mt-4">
+                <strong>Atenção:</strong> Ao clicar em "Enviar Candidatura", você confirma que todas as informações fornecidas são verdadeiras e concorda com nossa 
+                <a href="{% url 'privacy_policy' %}" target="_blank">Política de Privacidade</a>.
+            </div>
+        </div>
+        
+        <div class="step-navigation">
+            <button type="button" class="btn btn-secondary btn-lg" id="step3BackBtn" onclick="handleStep3Back()">
+                ← Voltar
+            </button>
+            <button type="submit" class="btn btn-success btn-lg" id="submitBtn">
+                Enviar Candidatura ✓
+            </button>
+        </div>
+    </div>
+</form>
+
+<div class="track-link">
+    <p class="text-muted">Já se candidatou? <a href="{% url 'candidate_login' %}">Acompanhe sua candidatura aqui</a></p>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentStep = 1;
+let questionnaireData = null;
+let selectedAnswers = {};
+let hasQuestionnaire = false;
+
+// Check if position has questionnaire
+async function checkQuestionnaireAvailability(position) {
+    if (!position) {
+        hideQuestionnaireStep();
+        return false;
+    }
+    
+    try {
+        const response = await fetch(`/api/questionnaires/active/?position_key=${encodeURIComponent(position)}`);
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data && data.questions && data.questions.length > 0) {
+                showQuestionnaireStep();
+                return true;
+            }
+        }
+        
+        hideQuestionnaireStep();
+        return false;
+    } catch (error) {
+        console.error('Error checking questionnaire:', error);
+        hideQuestionnaireStep();
+        return false;
+    }
+}
+
+// Show questionnaire step in indicator
+function showQuestionnaireStep() {
+    hasQuestionnaire = true;
+    document.getElementById('step-questionnaire').classList.remove('hidden');
+    document.getElementById('separator-1').classList.remove('hidden');
+    document.getElementById('separator-2').classList.remove('hidden');
+    updateStepNumbers();
+}
+
+// Hide questionnaire step in indicator
+function hideQuestionnaireStep() {
+    hasQuestionnaire = false;
+    document.getElementById('step-questionnaire').classList.add('hidden');
+    document.getElementById('separator-1').classList.add('hidden');
+    document.getElementById('separator-2').classList.add('hidden');
+    questionnaireData = null;
+    selectedAnswers = {};
+    updateStepNumbers();
+}
+
+// Update step numbers when questionnaire is hidden
+function updateStepNumbers() {
+    const step3 = document.querySelector('.step[data-step="3"]');
+    const step3Number = step3.querySelector('.step-number');
+    
+    if (hasQuestionnaire) {
+        step3Number.textContent = '3';
+    } else {
+        step3Number.textContent = '2';
+    }
+}
+
+// CSRF cookie helper
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+}
+
+// Simple toast
+function showToast(message, variant) {
+    const el = document.createElement('div');
+    el.className = `alert alert-${variant || 'info'} position-fixed top-0 start-50 translate-middle-x mt-3 shadow`;
+    el.style.zIndex = 2000;
+    el.textContent = message;
+    document.body.appendChild(el);
+    setTimeout(() => { el.remove(); }, 2500);
+}
+
+// Handle step 1 next button with partial save
+async function handleStep1Next() {
+    if (!validateStep(1)) {
+        return;
+    }
+    // Collect Step 1 minimal fields
+    const payload = {
+        full_name: (document.getElementById('id_full_name')?.value || '').trim(),
+        cpf: (document.getElementById('id_cpf')?.value || '').trim(),
+        email: (document.getElementById('id_email')?.value || '').trim(),
+        phone_number: (document.getElementById('id_phone_number')?.value || '').trim(),
+        position_applied: (document.querySelector('[name="position_applied"]')?.value || '').trim(),
+    };
+    if (!payload.full_name || !payload.cpf || !payload.phone_number) {
+        alert('Por favor, preencha Nome, CPF e Telefone.');
+        return;
+    }
+    try {
+        const res = await fetch('/api/candidates/public/partial-save/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') || '' },
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Falha ao salvar');
+        showToast('Dados pessoais salvos. Continue para o próximo passo.', 'success');
+    } catch (e) {
+        console.error('Partial save error:', e);
+        showToast(`Erro ao salvar: ${e.message || e}`, 'danger');
+        // Still allow moving forward to avoid blocking UX
+    }
+    
+    const positionField = document.querySelector('[name="position_applied"]');
+    const position = positionField ? positionField.value : '';
+    
+    // Check if position has questionnaire
+    const hasQuest = await checkQuestionnaireAvailability(position);
+    
+    if (hasQuest) {
+        goToStep(2);
+    } else {
+        goToStep(3);
+    }
+}
+
+// Handle step 3 back button
+function handleStep3Back() {
+    if (hasQuestionnaire) {
+        goToStep(2);
+    } else {
+        goToStep(1);
+    }
+}
+
+// Step navigation
+function goToStep(step) {
+    // Validate current step before moving forward
+    if (step > currentStep && !validateStep(currentStep)) {
+        return;
+    }
+    
+    // Special handling for step 2 (questionnaire)
+    if (step === 2 && !questionnaireData) {
+        loadQuestionnaire();
+    }
+    
+    // Special handling for step 3 (review)
+    if (step === 3) {
+        populateReview();
+    }
+    
+    // Update UI
+    document.querySelectorAll('.form-step').forEach(el => el.classList.remove('active'));
+    document.querySelector(`.form-step[data-step="${step}"]`).classList.add('active');
+    
+    document.querySelectorAll('.step').forEach(el => {
+        if (el.classList.contains('hidden')) return;
+        const stepNum = parseInt(el.dataset.step);
+        el.classList.remove('active', 'completed');
+        if (stepNum === step) {
+            el.classList.add('active');
+        } else if (stepNum < step) {
+            el.classList.add('completed');
+        }
+    });
+    
+    currentStep = step;
+    document.getElementById('currentStep').value = step;
+    
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Validate step
+function validateStep(step) {
+    if (step === 1) {
+        // Validate required fields in step 1
+        const requiredFields = document.querySelectorAll('.form-step[data-step="1"] [required]');
+        let isValid = true;
+        
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                field.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+        
+        if (!isValid) {
+            alert('Por favor, preencha todos os campos obrigatórios.');
+            return false;
+        }
+    }
+    
+    if (step === 2) {
+        // Validate questionnaire answers
+        if (questionnaireData && questionnaireData.questions) {
+            const allAnswered = questionnaireData.questions.every(q => {
+                return selectedAnswers[q.id] && selectedAnswers[q.id].length > 0;
+            });
+            
+            if (!allAnswered) {
+                alert('Por favor, responda todas as questões do questionário.');
+                return false;
+            }
+        }
+    }
+    
+    return true;
+}
+
+// Load questionnaire from API
+async function loadQuestionnaire() {
+    const positionField = document.querySelector('[name="position_applied"]');
+    if (!positionField || !positionField.value) {
+        showQuestionnaireEmpty('Por favor, selecione uma posição no passo anterior.');
+        return;
+    }
+    
+    const position = positionField.value;
+    
+    try {
+        const response = await fetch(`/api/questionnaires/active/?position_key=${encodeURIComponent(position)}`);
+        
+        if (!response.ok) {
+            if (response.status === 404) {
+                showQuestionnaireEmpty('Não há questionário disponível para esta posição no momento.');
+                return;
+            }
+            throw new Error('Erro ao carregar questionário');
+        }
+        
+        questionnaireData = await response.json();
+        
+        // Store template ID in hidden field
+        if (questionnaireData && questionnaireData.id) {
+            document.getElementById('templateId').value = questionnaireData.id;
+        }
+        
+        renderQuestionnaire();
+    } catch (error) {
+        console.error('Error loading questionnaire:', error);
+        showQuestionnaireEmpty('Não foi possível carregar o questionário. Você pode continuar sem responder.');
+    }
+}
+
+// Show empty questionnaire message
+function showQuestionnaireEmpty(message) {
+    const container = document.getElementById('questionnaireContainer');
+    container.innerHTML = `
+        <div class="questionnaire-empty">
+            <p>${message}</p>
+            <p class="text-muted small mt-2">Você pode pular esta etapa e continuar com sua candidatura.</p>
+        </div>
+    `;
+}
+
+// Render questionnaire
+function renderQuestionnaire() {
+    if (!questionnaireData || !questionnaireData.questions || questionnaireData.questions.length === 0) {
+        showQuestionnaireEmpty('Não há questões disponíveis para esta posição.');
+        return;
+    }
+    
+    const container = document.getElementById('questionnaireContainer');
+    container.innerHTML = '';
+    
+    questionnaireData.questions.forEach((question, index) => {
+        const questionCard = document.createElement('div');
+        questionCard.className = 'question-card';
+        
+        const questionText = document.createElement('div');
+        questionText.className = 'question-text';
+        questionText.textContent = `${index + 1}. ${question.question_text}`;
+        questionCard.appendChild(questionText);
+        
+        const optionsContainer = document.createElement('div');
+        optionsContainer.className = 'question-options';
+        
+        question.options.forEach(option => {
+            const label = document.createElement('label');
+            label.className = 'option-label';
+            
+            const input = document.createElement('input');
+            input.type = question.question_type === 'multi_select' ? 'checkbox' : 'radio';
+            input.name = `question_${question.id}`;
+            input.value = option.id;
+            input.onchange = () => handleAnswerChange(question.id, option.id, question.question_type);
+            
+            const span = document.createElement('span');
+            span.textContent = option.option_text;
+            
+            label.appendChild(input);
+            label.appendChild(span);
+            optionsContainer.appendChild(label);
+        });
+        
+        questionCard.appendChild(optionsContainer);
+        container.appendChild(questionCard);
+    });
+}
+
+// Handle answer change
+function handleAnswerChange(questionId, optionId, questionType) {
+    if (questionType === 'multi_select') {
+        if (!selectedAnswers[questionId]) {
+            selectedAnswers[questionId] = [];
+        }
+        
+        const index = selectedAnswers[questionId].indexOf(optionId);
+        if (index > -1) {
+            selectedAnswers[questionId].splice(index, 1);
+        } else {
+            selectedAnswers[questionId].push(optionId);
+        }
+    } else {
+        selectedAnswers[questionId] = [optionId];
+    }
+    
+    // Update hidden field
+    const answers = Object.entries(selectedAnswers).map(([qId, optIds]) => ({
+        question_id: parseInt(qId),
+        selected_option_ids: optIds
+    }));
+    document.getElementById('questionnaireAnswers').value = JSON.stringify(answers);
+}
+
+// Populate review
+function populateReview() {
+    const container = document.getElementById('reviewContainer');
+    container.innerHTML = '';
+    
+    // Personal info summary
+    const personalInfo = document.createElement('div');
+    personalInfo.className = 'alert alert-secondary';
+    personalInfo.innerHTML = `
+        <h5>Dados Pessoais</h5>
+        <p><strong>Nome:</strong> ${document.querySelector('[name="full_name"]').value}</p>
+        <p><strong>Email:</strong> ${document.querySelector('[name="email"]').value}</p>
+        <p><strong>Posição:</strong> ${document.querySelector('[name="position_applied"]').value}</p>
+    `;
+    container.appendChild(personalInfo);
+    
+    // Questionnaire summary
+    if (questionnaireData && Object.keys(selectedAnswers).length > 0) {
+        const questionnaireInfo = document.createElement('div');
+        questionnaireInfo.className = 'alert alert-secondary mt-3';
+        questionnaireInfo.innerHTML = '<h5>Questionário</h5>';
+        
+        questionnaireData.questions.forEach((question, index) => {
+            const answers = selectedAnswers[question.id] || [];
+            const selectedOptions = question.options
+                .filter(opt => answers.includes(opt.id))
+                .map(opt => opt.option_text)
+                .join(', ');
+            
+            questionnaireInfo.innerHTML += `
+                <p><strong>Questão ${index + 1}:</strong> ${selectedOptions || 'Não respondida'}</p>
+            `;
+        });
+        
+        container.appendChild(questionnaireInfo);
+    }
+}
+
+// Form submission
+document.getElementById('applicationForm').addEventListener('submit', function(e) {
+    if (currentStep !== 3) {
+        e.preventDefault();
+        return;
+    }
+    
+    // Disable submit button
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = 'Enviando... <span class="spinner-border spinner-border-sm"></span>';
+});
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if questionnaire is available for selected position
+    const positionField = document.getElementById('position_applied');
+    if (positionField && positionField.value) {
+        checkQuestionnaireAvailability(positionField.value);
+    }
+});
+</script>
+{% endblock %}

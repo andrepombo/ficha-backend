@@ -1,0 +1,367 @@
+"""
+WhatsApp notification service using Meta WhatsApp Cloud API.
+"""
+import os
+from datetime import datetime
+import logging
+import json
+import requests
+
+logger = logging.getLogger(__name__)
+
+
+class WhatsAppService:
+    """
+    Service class for sending WhatsApp messages via Meta WhatsApp Cloud API.
+    """
+    
+    def __init__(self):
+        """
+        Initialize Meta WhatsApp Cloud API client.
+        """
+        # Meta config
+        self.meta_api_version = os.getenv('META_API_VERSION', 'v20.0')
+        self.meta_phone_number_id = os.getenv('META_PHONE_NUMBER_ID')
+        self.meta_access_token = os.getenv('META_PERMANENT_ACCESS_TOKEN') or os.getenv('META_ACCESS_TOKEN')
+        self.meta_base_url = os.getenv('META_BASE_URL', f'https://graph.facebook.com/{self.meta_api_version}')
+
+        # Template identifiers
+        self.tpl_scheduled = os.getenv('META_TEMPLATE_SCHEDULED')
+        self.tpl_rescheduled = os.getenv('META_TEMPLATE_RESCHEDULED')
+        self.tpl_cancelled = os.getenv('META_TEMPLATE_CANCELLED')
+        self.tpl_language = os.getenv('WHATSAPP_TEMPLATE_LANG', 'pt_BR')
+    
+    def is_configured(self):
+        """
+        Check if WhatsApp service is properly configured.
+        """
+        return all([self.meta_phone_number_id, self.meta_access_token])
+    
+    def format_phone_number(self, phone_number):
+        """
+        Format phone number for WhatsApp (must be in E.164 format).
+        Intelligently handles Brazilian phone number formats.
+        
+        Brazilian mobile numbers can be:
+        - Old format: XX XXXX-XXXX (10 digits total: 2 area code + 8 number)
+        - New format: XX XXXXX-XXXX (11 digits total: 2 area code + 9 number)
+        
+        WhatsApp uses the actual registered number, which may vary.
+        This function tries both formats if delivery fails.
+        
+        Args:
+            phone_number (str): Phone number in format "XX XXXXX-XXXX" or "XX XXXX-XXXX"
+            
+        Returns:
+            str: Phone number in WhatsApp format "whatsapp:+55xxxxxxxxxx"
+        """
+        # Remove spaces, dashes, parentheses, and other formatting
+        cleaned = phone_number.replace(' ', '').replace('-', '').replace('(', '').replace(')', '').replace('.', '')
+        
+        # Remove country code if already present
+        if cleaned.startswith('+55'):
+            cleaned = cleaned[3:]
+        elif cleaned.startswith('55'):
+            cleaned = cleaned[2:]
+        elif cleaned.startswith('+'):
+            cleaned = cleaned[1:]
+        
+        # Now we should have just the area code + number
+        # Brazilian format: 2 digits (area code) + 8 or 9 digits (number)
+        
+        # Add Brazil country code
+        formatted = f'+55{cleaned}'
+        
+        # Meta expects plain E.164 without the whatsapp: prefix
+        return formatted
+
+    def _meta_send_template(self, to_e164: str, template_name: str, template_vars: list):
+        """
+        Send a WhatsApp template message via Meta Cloud API.
+        """
+        if not all([self.meta_phone_number_id, self.meta_access_token]):
+            raise Exception('Meta provider not configured: set META_PHONE_NUMBER_ID and META_PERMANENT_ACCESS_TOKEN')
+
+        url = f"{self.meta_base_url}/{self.meta_phone_number_id}/messages"
+        headers = {
+            'Authorization': f'Bearer {self.meta_access_token}',
+            'Content-Type': 'application/json'
+        }
+
+        # Build components for body parameters
+        body_parameters = [
+            {"type": "text", "text": str(v) if v is not None else ""}
+            for v in template_vars
+        ]
+
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": to_e164,
+            "type": "template",
+            "template": {
+                "name": template_name,
+                "language": {"code": self.tpl_language},
+                "components": [
+                    {"type": "body", "parameters": body_parameters}
+                ]
+            }
+        }
+
+        resp = requests.post(url, headers=headers, data=json.dumps(payload), timeout=20)
+        if resp.status_code >= 400:
+            try:
+                data = resp.json()
+            except Exception:
+                data = {"raw": resp.text}
+            logger.error(f"Meta send error {resp.status_code}: {data}")
+            raise Exception(f"Meta send failed: {resp.status_code} {data}")
+
+        data = resp.json()
+        message_id = None
+        try:
+            message_id = data.get('messages', [{}])[0].get('id')
+        except Exception:
+            pass
+        logger.info(f"✅ Meta message sent. ID: {message_id}, To: {to_e164}, Template: {template_name}")
+        return {
+            'success': True,
+            'message_sid': message_id or '',
+            'status': 'sent',
+            'phone_format_used': to_e164,
+            'verified_phone': to_e164
+        }
+    
+    def send_interview_scheduled_message(self, interview):
+        """
+        Send WhatsApp message to candidate when interview is scheduled.
+        
+        Args:
+            interview: Interview model instance
+            
+        Returns:
+            dict: Response with success status and message SID or error
+        """
+        if not self.is_configured():
+            logger.error("WhatsApp service is not configured")
+            return {
+                'success': False,
+                'error': 'WhatsApp service not configured'
+            }
+        
+        try:
+            candidate = interview.candidate
+            
+            # Check if candidate has opted in to WhatsApp notifications
+            if not candidate.whatsapp_opt_in:
+                logger.info(f"Candidate {candidate.full_name} has not opted in to WhatsApp notifications. Skipping.")
+                return {
+                    'success': False,
+                    'error': 'Candidate has not opted in to WhatsApp notifications',
+                    'opt_in_required': True
+                }
+            date_formatted = interview.scheduled_date.strftime('%d/%m/%Y')
+            time_formatted = interview.scheduled_time.strftime('%H:%M')
+            interview_type_display = dict(interview.TYPE_CHOICES).get(
+                interview.interview_type,
+                interview.interview_type
+            )
+
+            to_number = candidate.whatsapp_phone or candidate.phone_number
+            to_e164 = self.format_phone_number(to_number)
+            template_name = self.tpl_scheduled
+            if not template_name:
+                raise Exception('Set META_TEMPLATE_SCHEDULED')
+            template_vars = [
+                candidate.full_name,
+                interview.title,
+                interview_type_display,
+                date_formatted,
+                time_formatted,
+                str(interview.duration_minutes),
+                interview.location or ''
+            ]
+            result = self._meta_send_template(to_e164, template_name, template_vars)
+            
+            logger.info(
+                f"WhatsApp message sent successfully to {candidate.full_name}. "
+                f"Message SID: {result['message_sid']}, Format used: {result.get('phone_format_used')}"
+            )
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error sending WhatsApp message: {e}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def send_interview_reminder_message(self, interview):
+        """
+        Send WhatsApp reminder message to candidate (e.g., 24 hours before interview).
+        
+        Args:
+            interview: Interview model instance
+            
+        Returns:
+            dict: Response with success status and message SID or error
+        """
+        if not self.is_configured():
+            logger.error("WhatsApp service is not configured")
+            return {
+                'success': False,
+                'error': 'WhatsApp service not configured'
+            }
+        
+        try:
+            candidate = interview.candidate
+            
+            # Check if candidate has opted in to WhatsApp notifications
+            if not candidate.whatsapp_opt_in:
+                logger.info(f"Candidate {candidate.full_name} has not opted in to WhatsApp notifications. Skipping.")
+                return {
+                    'success': False,
+                    'error': 'Candidate has not opted in to WhatsApp notifications',
+                    'opt_in_required': True
+                }
+            
+            # Format the date and time
+            date_formatted = interview.scheduled_date.strftime('%d/%m/%Y')
+            time_formatted = interview.scheduled_time.strftime('%H:%M')
+            
+            # Note: Reminder messages would need a separate template in Meta
+            # For now, returning not implemented
+            logger.warning("Reminder messages not yet implemented for Meta provider")
+            return {
+                'success': False,
+                'error': 'Reminder messages not yet implemented for Meta provider'
+            }
+            
+        except Exception as e:
+            logger.error(f"Error sending WhatsApp reminder: {e}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def send_interview_cancelled_message(self, interview):
+        """
+        Send WhatsApp message to candidate when interview is cancelled.
+        
+        Args:
+            interview: Interview model instance
+            
+        Returns:
+            dict: Response with success status and message SID or error
+        """
+        if not self.is_configured():
+            logger.error("WhatsApp service is not configured")
+            return {
+                'success': False,
+                'error': 'WhatsApp service not configured'
+            }
+        
+        try:
+            candidate = interview.candidate
+            
+            # Check if candidate has opted in to WhatsApp notifications
+            if not candidate.whatsapp_opt_in:
+                logger.info(f"Candidate {candidate.full_name} has not opted in to WhatsApp notifications. Skipping.")
+                return {
+                    'success': False,
+                    'error': 'Candidate has not opted in to WhatsApp notifications',
+                    'opt_in_required': True
+                }
+            date_formatted = interview.scheduled_date.strftime('%d/%m/%Y')
+            time_formatted = interview.scheduled_time.strftime('%H:%M')
+
+            to_number = candidate.whatsapp_phone or candidate.phone_number
+            to_e164 = self.format_phone_number(to_number)
+            template_name = self.tpl_cancelled
+            if not template_name:
+                raise Exception('Set META_TEMPLATE_CANCELLED')
+            template_vars = [
+                candidate.full_name,
+                interview.title,
+                date_formatted,
+                time_formatted
+            ]
+            result = self._meta_send_template(to_e164, template_name, template_vars)
+            
+            logger.info(
+                f"WhatsApp cancellation message sent successfully to {candidate.full_name}. "
+                f"Message SID: {result['message_sid']}, Format used: {result.get('phone_format_used')}"
+            )
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error sending WhatsApp cancellation: {e}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def send_interview_rescheduled_message(self, interview, old_date=None, old_time=None):
+        """
+        Send WhatsApp message to candidate when interview is rescheduled.
+        
+        Args:
+            interview: Interview model instance
+            old_date: Previous scheduled date (optional)
+            old_time: Previous scheduled time (optional)
+            
+        Returns:
+            dict: Response with success status and message SID or error
+        """
+        if not self.is_configured():
+            logger.error("WhatsApp service is not configured")
+            return {
+                'success': False,
+                'error': 'WhatsApp service not configured'
+            }
+        
+        try:
+            candidate = interview.candidate
+            
+            # Check if candidate has opted in to WhatsApp notifications
+            if not candidate.whatsapp_opt_in:
+                logger.info(f"Candidate {candidate.full_name} has not opted in to WhatsApp notifications. Skipping.")
+                return {
+                    'success': False,
+                    'error': 'Candidate has not opted in to WhatsApp notifications',
+                    'opt_in_required': True
+                }
+            new_date_formatted = interview.scheduled_date.strftime('%d/%m/%Y')
+            new_time_formatted = interview.scheduled_time.strftime('%H:%M')
+
+            to_number = candidate.whatsapp_phone or candidate.phone_number
+            to_e164 = self.format_phone_number(to_number)
+            template_name = self.tpl_rescheduled
+            if not template_name:
+                raise Exception('Set META_TEMPLATE_RESCHEDULED')
+            # Template has only 3 variables: {{1}}=name, {{2}}=date, {{3}}=time
+            vars_list = [
+                candidate.full_name,
+                new_date_formatted,
+                new_time_formatted
+            ]
+            result = self._meta_send_template(to_e164, template_name, vars_list)
+            
+            logger.info(
+                f"WhatsApp rescheduling message sent successfully to {candidate.full_name}. "
+                f"Message SID: {result['message_sid']}, Format used: {result.get('phone_format_used')}"
+            )
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error sending WhatsApp rescheduling message: {e}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
+
+# Create a singleton instance
+whatsapp_service = WhatsAppService()

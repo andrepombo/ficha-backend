@@ -1,0 +1,39 @@
+{% extends 'candidate/base.html' %}
+
+{% block title %}Application Submitted Successfully{% endblock %}
+
+{% block content %}
+<div class="text-center py-5">
+    <div class="mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" fill="#28a745" class="bi bi-check-circle" viewBox="0 0 16 16">
+            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+            <path d="M10.97 4.97a.235.235 0 0 0-.02.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05z"/>
+        </svg>
+    </div>
+    
+    <h1 class="mb-3" style="color: #28a745;">Candidatura Enviada com Sucesso!</h1>
+    
+    <p class="lead mb-4">
+        Obrigado por se candidatar! Recebemos sua candidatura e iremos analisá-la cuidadosamente.
+    </p>
+    
+    <div class="alert alert-info d-inline-block mb-4" role="alert">
+        <strong>📋 Como acompanhar sua candidatura</strong><br>
+        <p class="mt-2 mb-0">
+            Use seu <strong>CPF</strong> para acessar o status da sua candidatura a qualquer momento.
+            <br><a href="{% url 'candidate_login' %}" class="text-decoration-underline fw-bold">Clique aqui para acompanhar</a>
+        </p>
+    </div>
+    
+    <div class="alert alert-info d-inline-block" role="alert">
+        <strong>Próximos Passos</strong><br>
+        Nossa equipe de recrutamento irá analisar sua candidatura e entrará em contato via e-mail caso suas qualificações correspondam aos nossos requisitos.
+        Este processo geralmente leva de 1 a 2 semanas.
+    </div>
+    
+    <div class="mt-5">
+        <a href="{% url 'candidate_login' %}" class="btn btn-primary me-2">Acompanhar Minha Candidatura</a>
+        <a href="{% url 'application_form' %}" class="btn btn-outline-primary">Enviar Outra Candidatura</a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,275 @@
+{% extends 'candidate/base.html' %}
+
+{% block title %}Status da Candidatura{% endblock %}
+
+{% block extra_css %}
+<style>
+    .status-timeline {
+        position: relative;
+        padding: 20px 0;
+    }
+    .status-step {
+        position: relative;
+        padding: 20px;
+        margin-bottom: 30px;
+        border-left: 4px solid #e0e0e0;
+        padding-left: 30px;
+    }
+    .status-step.active {
+        border-left-color: #667eea;
+        background-color: #f0f4ff;
+    }
+    .status-step.completed {
+        border-left-color: #28a745;
+    }
+    .status-step.rejected {
+        border-left-color: #dc3545;
+        background-color: #fff5f5;
+    }
+    .status-icon {
+        position: absolute;
+        left: -14px;
+        top: 20px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background-color: #e0e0e0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        color: white;
+    }
+    .status-step.active .status-icon {
+        background-color: #667eea;
+    }
+    .status-step.completed .status-icon {
+        background-color: #28a745;
+    }
+    .status-step.rejected .status-icon {
+        background-color: #dc3545;
+    }
+    /* Header action buttons */
+    .header-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .header-actions .action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px; /* compact height */
+        border-radius: 9999px; /* pill */
+        font-weight: 600;
+        font-size: 0.95rem;
+        text-decoration: none;
+        border: 1px solid transparent;
+        line-height: 1.2;
+    }
+    .header-actions .action-edit {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: #fff;
+        box-shadow: 0 2px 6px rgba(118, 75, 162, 0.25);
+    }
+    .header-actions .action-edit:hover { filter: brightness(1.05); }
+    .header-actions .action-exit {
+        background: #f3f4f6;
+        color: #374151;
+        border-color: #e5e7eb;
+    }
+    .header-actions .action-exit:hover { background: #e9ecef; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1>Status da Candidatura</h1>
+        <p class="text-muted mb-0">{{ candidate.get_full_name }}</p>
+    </div>
+    <div class="header-actions">
+        <a href="{% url 'candidate_edit' %}" class="action-btn action-edit" aria-label="Editar dados">
+            <span>✏️</span>
+            <span>Editar Dados</span>
+        </a>
+        <a href="{% url 'candidate_logout' %}" class="action-btn action-exit" aria-label="Sair">
+            <span>⎋</span>
+            <span>Sair</span>
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h3 class="mb-4">Progresso da Candidatura</h3>
+                
+                <div class="status-timeline">
+                    <!-- Step 1: Pendente -->
+                    <div class="status-step {% if current_status.step >= 1 %}completed{% endif %}">
+                        <div class="status-icon">
+                            {% if current_status.step >= 1 %}✓{% else %}1{% endif %}
+                        </div>
+                        <h5>Candidatura Recebida</h5>
+                        <p class="text-muted mb-0">Sua candidatura foi enviada com sucesso</p>
+                        <small class="text-muted">{{ candidate.applied_date|date:"d/m/Y H:i" }}</small>
+                    </div>
+
+                    <!-- Step 2: Em Análise -->
+                    <div class="status-step {% if candidate.status == 'reviewing' %}active{% elif current_status.step > 2 %}completed{% endif %}">
+                        <div class="status-icon">
+                            {% if current_status.step > 2 %}✓{% elif candidate.status == 'reviewing' %}⏳{% else %}2{% endif %}
+                        </div>
+                        <h5>Em Análise</h5>
+                        <p class="text-muted mb-0">
+                            {% if candidate.status == 'reviewing' %}
+                                Nossa equipe está analisando sua candidatura
+                            {% elif current_status.step > 2 %}
+                                Análise concluída
+                            {% else %}
+                                Aguardando análise
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <!-- Step 3: Selecionado para Entrevista -->
+                    <div class="status-step {% if candidate.status == 'shortlisted' %}active{% elif current_status.step > 3 %}completed{% endif %}">
+                        <div class="status-icon">
+                            {% if current_status.step > 3 %}✓{% elif candidate.status == 'shortlisted' %}📋{% else %}3{% endif %}
+                        </div>
+                        <h5>Selecionado para Entrevista</h5>
+                        <p class="text-muted mb-0">
+                            {% if candidate.status == 'shortlisted' %}
+                                <strong class="text-info">Parabéns! Você foi selecionado para entrevista!</strong>
+                            {% elif current_status.step > 3 %}
+                                Selecionado
+                            {% else %}
+                                Aguardando seleção
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <!-- Step 4: Entrevista -->
+                    <div class="status-step {% if candidate.status == 'interviewed' %}active{% elif current_status.step > 4 %}completed{% elif scheduled_interviews %}active{% endif %}">
+                        <div class="status-icon">
+                            {% if current_status.step > 4 %}✓{% elif candidate.status == 'interviewed' %}👤{% elif scheduled_interviews %}📅{% else %}4{% endif %}
+                        </div>
+                        <h5>Entrevista</h5>
+                        <p class="text-muted mb-0">
+                            {% if candidate.status == 'interviewed' %}
+                                Você foi entrevistado. Aguarde o resultado final
+                            {% elif current_status.step > 3 %}
+                                Entrevista realizada
+                            {% elif scheduled_interviews %}
+                                <strong class="text-primary">Você tem entrevista(s) agendada(s)!</strong>
+                            {% else %}
+                                Aguardando convocação para entrevista
+                            {% endif %}
+                        </p>
+                        
+                        {% if scheduled_interviews %}
+                            <div class="mt-3">
+                                {% for interview in scheduled_interviews %}
+                                    <div class="alert alert-success mb-2">
+                                        <div class="d-flex align-items-start">
+                                            <div class="me-3">
+                                                <span style="font-size: 2rem;">📅</span>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h6 class="alert-heading mb-2">{{ interview.title }}</h6>
+                                                <p class="mb-1">
+                                                    <strong>📆 Data:</strong> {{ interview.scheduled_date|date:"d/m/Y (l)" }}
+                                                </p>
+                                                <p class="mb-1">
+                                                    <strong>🕐 Horário:</strong> {{ interview.scheduled_time|time:"H:i" }}
+                                                </p>
+                                                <p class="mb-1">
+                                                    <strong>⏱️ Duração:</strong> {{ interview.duration_minutes }} minutos
+                                                </p>
+                                                {% if interview.interview_type %}
+                                                    <p class="mb-1">
+                                                        <strong>📋 Tipo:</strong> 
+                                                        {% if interview.interview_type == 'video' %}Vídeo
+                                                        {% elif interview.interview_type == 'phone' %}Telefone
+                                                        {% elif interview.interview_type == 'in_person' %}Presencial
+                                                        {% elif interview.interview_type == 'technical' %}Técnica
+                                                        {% elif interview.interview_type == 'hr' %}RH
+                                                        {% else %}{{ interview.interview_type }}
+                                                        {% endif %}
+                                                    </p>
+                                                {% endif %}
+                                                {% if interview.location %}
+                                                    <p class="mb-1">
+                                                        <strong>📍 Local/Link:</strong> 
+                                                        {% if 'http' in interview.location %}
+                                                            <a href="{{ interview.location }}" target="_blank" class="text-decoration-none">
+                                                                {{ interview.location }}
+                                                            </a>
+                                                        {% else %}
+                                                            {{ interview.location }}
+                                                        {% endif %}
+                                                    </p>
+                                                {% endif %}
+                                                {% if interview.description %}
+                                                    <p class="mb-0 mt-2">
+                                                        <small class="text-muted">{{ interview.description }}</small>
+                                                    </p>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Step 5: Resultado Final -->
+                    <div class="status-step {% if candidate.status == 'accepted' %}completed{% elif candidate.status == 'rejected' %}rejected{% endif %}">
+                        <div class="status-icon">
+                            {% if candidate.status == 'accepted' %}🎉{% elif candidate.status == 'rejected' %}✗{% else %}5{% endif %}
+                        </div>
+                        <h5>Resultado Final</h5>
+                        <p class="text-muted mb-0">
+                            {% if candidate.status == 'accepted' %}
+                                <strong class="text-success">Parabéns! Sua candidatura foi aceita! 🎉</strong><br>
+                                Entraremos em contato em breve com os próximos passos.
+                            {% elif candidate.status == 'rejected' %}
+                                <strong class="text-danger">Candidatura não selecionada</strong><br>
+                                Infelizmente, sua candidatura não foi selecionada desta vez. Agradecemos seu interesse e encorajamos você a se candidatar novamente no futuro.
+                            {% else %}
+                                Aguardando resultado final
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Informações da Candidatura</h5>
+                <hr>
+                <p class="mb-2"><strong>Cargo:</strong></p>
+                <p class="text-muted">{{ candidate.position_applied }}</p>
+                
+                <p class="mb-2"><strong>Data de Candidatura:</strong></p>
+                <p class="text-muted">{{ candidate.applied_date|date:"d/m/Y" }}</p>
+                
+                <p class="mb-2"><strong>Email:</strong></p>
+                <p class="text-muted small">{{ candidate.email }}</p>
+            </div>
+        </div>
+
+        <div class="alert alert-info">
+            <h6 class="alert-heading">📧 Dúvidas?</h6>
+            <p class="mb-0 small">
+                Se você tiver alguma dúvida sobre sua candidatura, entre em contato conosco através do email que você forneceu.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
