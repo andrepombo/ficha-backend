@@ -1,0 +1,78 @@
+name: Setup Environment and Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Setup and Deploy
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Setup Environment and Start Containers
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "=========================================="
+            echo "Setting up Environment and Deploying"
+            echo "=========================================="
+            
+            cd ~/ficha-backend
+            
+            # Create .env file from .env.production
+            echo "→ Creating .env file..."
+            cp .env.production .env
+            
+            # Update .env with actual values
+            echo "→ Updating .env with EC2 IP..."
+            sed -i "s/your-ec2-ip-address/${{ secrets.EC2_HOST }}/g" .env
+            sed -i "s/yourdomain.com.br/${{ secrets.EC2_HOST }}/g" .env
+            sed -i "s/www.yourdomain.com.br/${{ secrets.EC2_HOST }}/g" .env
+            
+            # Generate a random SECRET_KEY (without Django)
+            echo "→ Generating SECRET_KEY..."
+            NEW_SECRET_KEY=$(openssl rand -base64 50 | tr -d '\n')
+            sed -i "s/your-super-secret-production-key-change-this/$NEW_SECRET_KEY/g" .env
+            
+            echo ""
+            echo "→ .env file created (showing non-sensitive parts):"
+            grep -E "DEBUG|ALLOWED_HOSTS" .env
+            
+            # Stop existing containers
+            echo ""
+            echo "→ Stopping existing containers..."
+            sudo docker compose down || true
+            
+            # Build and start
+            echo ""
+            echo "→ Building containers..."
+            sudo docker compose build --no-cache
+            
+            echo ""
+            echo "→ Starting containers..."
+            sudo docker compose up -d
+            
+            # Wait and check
+            echo ""
+            echo "→ Waiting for containers to start..."
+            sleep 30
+            
+            echo ""
+            echo "→ Container status:"
+            sudo docker compose ps
+            
+            echo ""
+            echo "→ Recent logs:"
+            sudo docker compose logs --tail=50 backend
+            
+            echo ""
+            echo "→ Test connection:"
+            curl -I http://localhost:8000 2>&1 | head -10
+            
+            echo ""
+            echo "=========================================="
+            echo "✓ Deployment complete!"
+            echo "=========================================="

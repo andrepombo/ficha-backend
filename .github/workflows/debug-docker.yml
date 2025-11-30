@@ -1,0 +1,63 @@
+name: Debug Docker Issue
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug:
+    name: Debug Docker
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Debug Docker Setup
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "=========================================="
+            echo "Docker Debug Information"
+            echo "=========================================="
+            
+            echo "1. Docker version:"
+            docker --version
+            docker compose version
+            
+            echo ""
+            echo "2. Docker service status:"
+            sudo systemctl status docker --no-pager
+            
+            echo ""
+            echo "3. Check if user can run docker:"
+            groups
+            docker ps 2>&1 || echo "Cannot run docker without sudo"
+            
+            echo ""
+            echo "4. Files in ficha-backend:"
+            ls -la ~/ficha-backend/
+            
+            echo ""
+            echo "5. Check Dockerfile:"
+            cat ~/ficha-backend/Dockerfile
+            
+            echo ""
+            echo "6. Check docker-compose.yml:"
+            cat ~/ficha-backend/docker-compose.yml
+            
+            echo ""
+            echo "7. Check if .env exists:"
+            ls -la ~/ficha-backend/.env* || echo "No .env files"
+            
+            echo ""
+            echo "8. Try to build (show errors):"
+            cd ~/ficha-backend
+            sudo docker compose build 2>&1 | tail -50
+            
+            echo ""
+            echo "9. Check for any existing containers:"
+            sudo docker ps -a
+            
+            echo ""
+            echo "10. Check Docker logs:"
+            sudo journalctl -u docker --no-pager -n 50

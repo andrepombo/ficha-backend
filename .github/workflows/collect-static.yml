@@ -1,0 +1,39 @@
+name: Collect Static Files
+
+on:
+  workflow_dispatch:
+
+jobs:
+  collect:
+    name: Run Django collectstatic
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Collect Static Files
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "=========================================="
+            echo "Collecting Django Static Files"
+            echo "=========================================="
+            
+            cd ~/ficha-backend
+            
+            echo "→ Running collectstatic..."
+            sudo docker compose exec -T backend python manage.py collectstatic --noinput
+            
+            echo ""
+            echo "→ Checking static files directory..."
+            sudo docker compose exec -T backend ls -la /app/staticfiles/ | head -20
+            
+            echo ""
+            echo "→ Testing static file access..."
+            curl -I http://localhost:8000/static/admin/css/base.css 2>&1 | head -10
+            
+            echo ""
+            echo "=========================================="
+            echo "✓ Static files collected!"
+            echo "=========================================="

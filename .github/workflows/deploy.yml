@@ -1,0 +1,86 @@
+name: Deploy Backend to EC2
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Copy files to EC2
+        uses: easingthemes/ssh-deploy@main
+        with:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          ARGS: "-rlgoDzvc -i"
+          SOURCE: "./"
+          REMOTE_HOST: ${{ secrets.EC2_HOST }}
+          REMOTE_USER: ${{ secrets.EC2_USERNAME }}
+          TARGET: '/home/${{ secrets.EC2_USERNAME }}/ficha-backend'
+          EXCLUDE: "/dist/, /node_modules/, /.git/, /venv/, /__pycache__/, *.pyc, *.log"
+          SCRIPT_AFTER: |
+            echo "Files copied successfully"
+
+      - name: Create .env file
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/${{ secrets.EC2_USERNAME }}/ficha-backend
+            
+            echo "Creating .env file from secrets..."
+            cat > .env << 'EOF'
+            SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
+            DEBUG=False
+            ALLOWED_HOSTS=fichapinte.com.br,www.fichapinte.com.br,${{ secrets.EC2_HOST }}
+            CORS_ALLOWED_ORIGINS=https://fichapinte.com.br,https://www.fichapinte.com.br
+            CSRF_TRUSTED_ORIGINS=https://fichapinte.com.br,https://www.fichapinte.com.br
+            SECURE_SSL_REDIRECT=True
+            SESSION_COOKIE_SECURE=True
+            CSRF_COOKIE_SECURE=True
+            SECURE_HSTS_SECONDS=31536000
+            SECURE_HSTS_INCLUDE_SUBDOMAINS=True
+            SECURE_HSTS_PRELOAD=True
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            DB_SSL_REQUIRE=True
+            META_PHONE_NUMBER_ID=${{ secrets.META_PHONE_NUMBER_ID }}
+            META_PERMANENT_ACCESS_TOKEN=${{ secrets.META_ACCESS_TOKEN }}
+            META_API_VERSION=v20.0
+            META_BASE_URL=https://graph.facebook.com/v20.0
+            META_WEBHOOK_VERIFY_TOKEN=${{ secrets.META_WEBHOOK_VERIFY_TOKEN }}
+            META_TEMPLATE_SCHEDULED=${{ secrets.META_TEMPLATE_SCHEDULED }}
+            META_TEMPLATE_RESCHEDULED=${{ secrets.META_TEMPLATE_RESCHEDULED }}
+            META_TEMPLATE_CANCELLED=${{ secrets.META_TEMPLATE_CANCELLED }}
+            ZAPI_INSTANCE_ID=${{ secrets.ZAPI_INSTANCE_ID }}
+            ZAPI_TOKEN=${{ secrets.ZAPI_TOKEN }}
+            ZAPI_CLIENT_TOKEN=${{ secrets.ZAPI_CLIENT_TOKEN }}
+            ZAPI_TIMEOUT_SECONDS=10
+            USE_S3_MEDIA=True
+            AWS_STORAGE_BUCKET_NAME=pinte-fichas-media-prod
+            AWS_S3_REGION_NAME=us-east-2
+            AWS_S3_CUSTOM_DOMAIN=pinte-fichas-media-prod.s3.us-east-2.amazonaws.com
+            EOF
+            
+            echo "✓ .env file created"
+
+      - name: Run deployment script
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/${{ secrets.EC2_USERNAME }}/ficha-backend
+            
+            echo "Running deployment script..."
+            bash deploy.sh
+            
+            echo "Deployment completed successfully!"

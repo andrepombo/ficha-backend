@@ -1,0 +1,50 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls static admin_list %}
+
+{% block content_title %}
+    <div style="margin-bottom: 20px;">
+        <h1 style="margin-bottom: 5px;">{{ title }}</h1>
+        <div style="font-size: 1.2rem; color: #666; font-weight: 500; margin-bottom: 20px;">
+            {{ current_month_pt }} {{ current_year }}
+        </div>
+    </div>
+    
+    <!-- Statistics Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 30px;">
+        <!-- Total -->
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div style="color: rgba(255,255,255,0.9); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;">TOTAL</div>
+            <div style="color: white; font-size: 2rem; font-weight: bold;">{{ total_candidates }}</div>
+        </div>
+        
+        <!-- Pendente -->
+        <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div style="color: rgba(255,255,255,0.9); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;">PENDENTE</div>
+            <div style="color: white; font-size: 2rem; font-weight: bold;">{{ pending_count }}</div>
+        </div>
+        
+        <!-- Em Análise -->
+        <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div style="color: rgba(255,255,255,0.9); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;">EM ANÁLISE</div>
+            <div style="color: white; font-size: 2rem; font-weight: bold;">{{ reviewing_count }}</div>
+        </div>
+        
+        <!-- Entrevistado -->
+        <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div style="color: rgba(255,255,255,0.9); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;">ENTREVISTADO</div>
+            <div style="color: white; font-size: 2rem; font-weight: bold;">{{ interviewed_count }}</div>
+        </div>
+        
+        <!-- Aceito -->
+        <div style="background: linear-gradient(135deg, #90EE90 0%, #32CD32 100%); padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div style="color: rgba(255,255,255,0.9); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;">ACEITO</div>
+            <div style="color: white; font-size: 2rem; font-weight: bold;">{{ accepted_count }}</div>
+        </div>
+        
+        <!-- Rejeitado -->
+        <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div style="color: rgba(255,255,255,0.9); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;">REJEITADO</div>
+            <div style="color: white; font-size: 2rem; font-weight: bold;">{{ rejected_count }}</div>
+        </div>
+    </div>
+{% endblock %}

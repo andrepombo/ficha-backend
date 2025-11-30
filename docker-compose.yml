@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ficha-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - backend-media:/app/media
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SETTINGS_MODULE=core.settings
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/pinte_fichas
+      - DB_SSL_REQUIRE=False
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ficha-network
+
+  db:
+    image: postgres:16-alpine
+    container_name: ficha-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pinte_fichas
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U postgres -d pinte_fichas"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - ficha-network
+
+networks:
+  ficha-network:
+    external: false
+
+volumes:
+  backend-media:
+  postgres-data:

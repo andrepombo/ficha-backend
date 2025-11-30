@@ -1,0 +1,44 @@
+name: Check Deployment Status
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Check EC2 Status
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check Docker and Application Status
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "=========================================="
+            echo "EC2 Deployment Status Check"
+            echo "=========================================="
+            
+            echo "1. Check if ficha-backend directory exists:"
+            ls -la ~/ficha-backend 2>/dev/null || echo "Directory not found!"
+            
+            echo ""
+            echo "2. Check Docker containers:"
+            cd ~/ficha-backend 2>/dev/null && sudo docker compose ps || echo "No containers found"
+            
+            echo ""
+            echo "3. Check if backend is listening on port 8000:"
+            sudo netstat -tlnp | grep 8000 || echo "Nothing listening on port 8000"
+            
+            echo ""
+            echo "4. Test direct connection to port 8000:"
+            curl -I http://localhost:8000 2>&1 | head -10 || echo "Cannot connect to port 8000"
+            
+            echo ""
+            echo "5. Check Nginx configuration:"
+            ls -la /etc/nginx/sites-enabled/
+            
+            echo ""
+            echo "6. Check recent Docker logs:"
+            cd ~/ficha-backend 2>/dev/null && sudo docker compose logs --tail=30 backend || echo "No logs available"

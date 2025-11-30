@@ -1,0 +1,40 @@
+name: Quick Diagnostic
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Quick Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check Everything
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "1. Docker version:"
+            docker --version
+            docker compose version
+            
+            echo ""
+            echo "2. Files in ficha-backend:"
+            ls -la ~/ficha-backend/
+            
+            echo ""
+            echo "3. Docker compose file exists?"
+            cat ~/ficha-backend/docker-compose.yml
+            
+            echo ""
+            echo "4. Try to start containers manually:"
+            cd ~/ficha-backend
+            sudo docker compose up -d --build
+            
+            echo ""
+            echo "5. Wait and check:"
+            sleep 20
+            sudo docker compose ps
+            sudo docker compose logs backend

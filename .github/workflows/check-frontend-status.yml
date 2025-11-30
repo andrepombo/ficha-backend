@@ -1,0 +1,37 @@
+name: Check Frontend Status
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Check Frontend Container
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check Frontend Status
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "=========================================="
+            echo "Frontend Status Check"
+            echo "=========================================="
+            
+            echo "1. Check if frontend container is running:"
+            cd ~/ficha-frontend
+            sudo docker compose ps
+            
+            echo ""
+            echo "2. Check frontend logs:"
+            sudo docker compose logs --tail=50 frontend
+            
+            echo ""
+            echo "3. Test direct connection to port 5173:"
+            curl -I http://localhost:5173 2>&1 | head -10
+            
+            echo ""
+            echo "4. Check what's listening on port 5173:"
+            sudo ss -tlnp | grep 5173 || echo "Nothing listening on port 5173"

@@ -1,0 +1,21 @@
+{
+  "experience_skills": {
+    "years_of_experience": 32
+  },
+  "education": {
+    "education_level": 16,
+    "courses": 0,
+    "skills": 2,
+    "certifications": 0
+  },
+  "availability_logistics": {
+    "immediate_availability": 5,
+    "own_transportation": 5,
+    "travel_availability": 5,
+    "height_painting": 5
+  },
+  "interview_performance": {
+    "average_rating": 30,
+    "feedback_quality": 0
+  }
+}

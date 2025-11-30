@@ -1,0 +1,14 @@
+[
+  {
+    "id": 1,
+    "name": "Pintor",
+    "is_active": true,
+    "created_at": "2025-01-15T00:00:00Z"
+  },
+  {
+    "id": 2,
+    "name": "Auxiliar de Pintor",
+    "is_active": true,
+    "created_at": "2025-01-15T00:00:00Z"
+  }
+]

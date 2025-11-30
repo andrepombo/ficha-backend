@@ -1,0 +1,59 @@
+name: Start Docker Containers
+
+on:
+  workflow_dispatch:
+
+jobs:
+  start:
+    name: Build and Start Containers
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Start Docker Containers
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "=========================================="
+            echo "Starting Docker Containers"
+            echo "=========================================="
+            
+            cd ~/ficha-backend
+            
+            echo "→ Stopping any existing containers..."
+            sudo docker compose down || true
+            
+            echo ""
+            echo "→ Building containers..."
+            sudo docker compose build --no-cache
+            
+            echo ""
+            echo "→ Starting containers..."
+            sudo docker compose up -d
+            
+            echo ""
+            echo "→ Waiting for containers to start..."
+            sleep 30
+            
+            echo ""
+            echo "→ Container status:"
+            sudo docker compose ps
+            
+            echo ""
+            echo "→ Check if port 8000 is listening:"
+            sudo ss -tlnp | grep 8000 || echo "Port 8000 not listening yet"
+            
+            echo ""
+            echo "→ Recent logs:"
+            sudo docker compose logs --tail=50 backend
+            
+            echo ""
+            echo "→ Test connection:"
+            curl -I http://localhost:8000 2>&1 | head -10 || echo "Cannot connect yet"
+            
+            echo ""
+            echo "=========================================="
+            echo "✓ Containers started!"
+            echo "=========================================="

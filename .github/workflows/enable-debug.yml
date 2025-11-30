@@ -1,0 +1,40 @@
+name: Enable DEBUG Mode
+
+on:
+  workflow_dispatch:
+
+jobs:
+  enable-debug:
+    name: Enable DEBUG for Static Files
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Update .env and Restart
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "=========================================="
+            echo "Enabling DEBUG Mode"
+            echo "=========================================="
+            
+            cd ~/ficha-backend
+            
+            echo "→ Updating .env file..."
+            sed -i 's/DEBUG=False/DEBUG=True/g' .env
+            
+            echo "→ Restarting backend container..."
+            sudo docker compose restart backend
+            
+            echo "→ Waiting for container to start..."
+            sleep 20
+            
+            echo "→ Testing static file access..."
+            curl -I http://localhost:8000/static/admin/css/base.css 2>&1 | head -10
+            
+            echo ""
+            echo "=========================================="
+            echo "✓ DEBUG enabled! Static files should work now."
+            echo "=========================================="

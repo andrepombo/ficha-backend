@@ -1,0 +1,55 @@
+name: Create Django Superuser
+
+on:
+  workflow_dispatch:
+    inputs:
+      username:
+        description: 'Superuser username'
+        required: true
+        default: 'admin'
+      email:
+        description: 'Superuser email'
+        required: true
+        default: 'admin@example.com'
+      password:
+        description: 'Superuser password'
+        required: true
+
+jobs:
+  create-superuser:
+    name: Create Superuser
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Create Superuser
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "=========================================="
+            echo "Creating Django Superuser"
+            echo "=========================================="
+            
+            cd ~/ficha-backend
+            
+            echo "→ Creating superuser: ${{ github.event.inputs.username }}"
+            sudo docker compose exec -T backend python manage.py shell << EOF
+from django.contrib.auth import get_user_model
+User = get_user_model()
+if not User.objects.filter(username='${{ github.event.inputs.username }}').exists():
+    User.objects.create_superuser('${{ github.event.inputs.username }}', '${{ github.event.inputs.email }}', '${{ github.event.inputs.password }}')
+    print('✓ Superuser created successfully!')
+else:
+    print('⚠ Superuser already exists!')
+EOF
+            
+            echo ""
+            echo "=========================================="
+            echo "✓ Done!"
+            echo "=========================================="
+            echo ""
+            echo "You can now login at:"
+            echo "  http://${{ secrets.EC2_HOST }}/admin/"
+            echo "  Username: ${{ github.event.inputs.username }}"

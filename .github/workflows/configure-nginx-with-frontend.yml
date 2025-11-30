@@ -1,0 +1,53 @@
+name: Configure Nginx with Frontend
+
+on:
+  workflow_dispatch:
+
+jobs:
+  configure:
+    name: Configure Nginx for Backend + Frontend
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Configure Nginx
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "=========================================="
+            echo "Configuring Nginx for Backend + Frontend"
+            echo "=========================================="
+            
+            # Copy Nginx configuration from repository
+            echo "→ Copying nginx-docker.conf from repository..."
+            sudo cp /home/${{ secrets.EC2_USERNAME }}/ficha-backend/nginx-docker.conf /etc/nginx/sites-available/ficha-backend
+            
+            # Remove default site
+            sudo rm -f /etc/nginx/sites-enabled/default
+            
+            # Enable new site
+            sudo ln -sf /etc/nginx/sites-available/ficha-backend /etc/nginx/sites-enabled/
+            
+            # Test configuration
+            echo ""
+            echo "Testing Nginx configuration..."
+            sudo nginx -t
+            
+            # Restart Nginx
+            echo ""
+            echo "Restarting Nginx..."
+            sudo systemctl restart nginx
+            
+            # Check status
+            echo ""
+            echo "Nginx status:"
+            sudo systemctl status nginx --no-pager
+            
+            echo ""
+            echo "=========================================="
+            echo "✓ Nginx configured successfully!"
+            echo "  - Backend: http://${{ secrets.EC2_HOST }}/"
+            echo "  - Frontend: http://${{ secrets.EC2_HOST }}/painel"
+            echo "=========================================="
