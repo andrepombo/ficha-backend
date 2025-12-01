@@ -99,14 +99,24 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 # Prefer DATABASE_URL (PostgreSQL) when set; fallback to SQLite locally
-DATABASES = {
-    'default': dj_database_url.config(
-        env='DATABASE_URL',
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-        conn_max_age=600,
-        ssl_require=os.getenv('DB_SSL_REQUIRE', 'False').lower() in ('1', 'true', 'yes', 'on'),
-    )
-}
+database_url = os.getenv('DATABASE_URL')
+if database_url:
+    # Use PostgreSQL with SSL settings
+    DATABASES = {
+        'default': dj_database_url.config(
+            env='DATABASE_URL',
+            conn_max_age=600,
+            ssl_require=os.getenv('DB_SSL_REQUIRE', 'False').lower() in ('1', 'true', 'yes', 'on'),
+        )
+    }
+else:
+    # Use SQLite for local development (no SSL settings)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
