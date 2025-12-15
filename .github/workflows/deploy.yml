@@ -92,7 +92,7 @@ jobs:
               exit 1
             fi
 
-            echo "Backend container status:"
+            echo "Backend container status1:"
             docker compose ps backend
 
             echo "Recent backend logs:"
