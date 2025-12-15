@@ -3,11 +3,18 @@ name: Deploy Backend to VPS
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
+
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: true
+
+env:
+  APP_BASE_URL: https://app1.andrepombo.info
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout code
@@ -70,3 +77,31 @@ jobs:
             docker compose ps backend
             
             echo "Deployment completed successfully!"
+
+      - name: Health check
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_SSH_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /home/${{ secrets.VPS_SSH_USER }}/apps/app1
+            echo "Performing backend health check via public API endpoint..."
+            sleep 10
+
+            if curl -f -s ${{ env.APP_BASE_URL }}/api/ > /dev/null 2>&1; then
+              echo "API endpoint is responding"
+            else
+              echo "API endpoint check failed"
+              docker compose logs backend --tail=50
+              exit 1
+            fi
+
+            echo "Backend container status:"
+            docker compose ps backend
+
+            echo "Recent backend logs:"
+            docker compose logs backend --tail=20
+
+            echo "Deployment health check completed!"
+            echo "Your application should be accessible at: ${{ env.APP_BASE_URL }}"
