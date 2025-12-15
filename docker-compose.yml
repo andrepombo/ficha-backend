@@ -17,7 +17,6 @@ services:
       - DJANGO_SETTINGS_MODULE=core.settings
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/pinte_fichas
       - DB_SSL_REQUIRE=False
-    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
     restart: unless-stopped
     depends_on:
       db:
