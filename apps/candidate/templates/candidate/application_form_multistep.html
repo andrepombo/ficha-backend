@@ -1,5 +1,7 @@
 {% extends 'candidate/base.html' %}
 
+{% load static %}
+
 {% block title %}Pinte Pinturas{% endblock %}
 
 {% block extra_css %}
@@ -163,7 +165,7 @@
 {% block content %}
 <div class="page-header">
     <div class="logo-title-container">
-        <img src="/media/pinte-logo.png" alt="Pinte Logo" onerror="this.style.display='none'">
+        <img src="{% static 'candidate/images/pinte-logo.png' %}" alt="Pinte Logo" onerror="this.style.display='none'">
         <div>
             <h1>Pinte Pinturas</h1>
             <p style="margin: 0; color: #666;">Preencha o formulário abaixo para se candidatar a uma vaga conosco</p>
