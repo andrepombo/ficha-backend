@@ -1,4 +1,4 @@
-#!/home/lock221/pinte_fichas/ficha-backend/venv/bin/python3
+#!/home/lock221/Projetos/pinte_fichas/ficha-backend/venv/bin/python3
 
 import sys
 import json
