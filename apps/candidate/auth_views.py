@@ -6,6 +6,7 @@ from django.contrib.auth.models import User
 from django.http import HttpResponse
 from rest_framework_simplejwt.tokens import RefreshToken
 import os
+from django.core.cache import cache
 
 
 @api_view(['GET'])
@@ -46,6 +47,23 @@ def demo_login(request):
     if created:
         user.set_password(password)
         user.save()
+
+    # Basic IP rate limiting (30 hits/hour per IP)
+    try:
+        ip = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR', 'unknown')
+    except Exception:
+        ip = 'unknown'
+    key = f"demo_login:{ip}"
+    cnt = cache.get(key)
+    if cnt is None:
+        cache.set(key, 1, timeout=3600)
+    else:
+        if cnt >= 30:
+            return HttpResponse('<h1>Too Many Requests</h1><p>Please try again later.</p>', status=429)
+        try:
+            cache.incr(key)
+        except Exception:
+            cache.set(key, cnt + 1, timeout=3600)
 
     # Issue JWT token pair
     refresh = RefreshToken.for_user(user)

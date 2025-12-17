@@ -29,6 +29,8 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure--llf)gs-ayvvm2tw5846--t1c2
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False').lower() in ('1', 'true', 'yes', 'on')
 
+DEMO_MODE = os.getenv('DEMO_MODE', 'False').lower() in ('1', 'true', 'yes', 'on')
+
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '0.0.0.0,localhost,127.0.0.1,backend,app1.andrepombo.info').split(',')
 
 # SSL/HTTPS Settings (for production)
@@ -71,6 +73,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'apps.candidate.middleware.DemoReadOnlyMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]

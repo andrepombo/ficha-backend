@@ -11,6 +11,7 @@ import json
 import requests
 
 logger = logging.getLogger(__name__)
+DEMO_MODE = os.getenv('DEMO_MODE', 'False').lower() in ('1', 'true', 'yes', 'on')
 
 
 class WhatsAppService:
@@ -310,6 +311,9 @@ class WhatsAppService:
         Returns:
             dict: Response with success status and message SID or error
         """
+        if DEMO_MODE:
+            logger.info("[DEMO_MODE] Skipping WhatsApp scheduled message")
+            return {'success': True, 'skipped': True, 'demo': True}
         if not self.is_configured():
             logger.error("WhatsApp service is not configured")
             return {
@@ -409,6 +413,9 @@ Sua entrevista foi agendada com sucesso! ✅
         Returns:
             dict: Response with success status and message SID or error
         """
+        if DEMO_MODE:
+            logger.info("[DEMO_MODE] Skipping WhatsApp reminder message")
+            return {'success': True, 'skipped': True, 'demo': True}
         if not self.is_configured():
             logger.error("WhatsApp service is not configured")
             return {
@@ -487,6 +494,9 @@ Este é um lembrete sobre sua entrevista agendada:
         Returns:
             dict: Response with success status and message SID or error
         """
+        if DEMO_MODE:
+            logger.info("[DEMO_MODE] Skipping WhatsApp cancellation message")
+            return {'success': True, 'skipped': True, 'demo': True}
         if not self.is_configured():
             logger.error("WhatsApp service is not configured")
             return {
@@ -572,6 +582,9 @@ _Pinte Pinturas - Equipe de RH_"""
         Returns:
             dict: Response with success status and message SID or error
         """
+        if DEMO_MODE:
+            logger.info("[DEMO_MODE] Skipping WhatsApp rescheduled message")
+            return {'success': True, 'skipped': True, 'demo': True}
         if not self.is_configured():
             logger.error("WhatsApp service is not configured")
             return {

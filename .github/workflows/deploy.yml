@@ -26,6 +26,7 @@ jobs:
         run: |
           echo "ENV=${ENV}" >> .env
           echo "DEBUG=${{ secrets.DEBUG }}" >> .env
+          echo "DEMO_MODE=true" >> .env
           
           # echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> .env
           # echo "ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}" >> .env

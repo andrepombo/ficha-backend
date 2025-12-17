@@ -5,6 +5,7 @@ from typing import Dict, Any
 import requests
 
 logger = logging.getLogger(__name__)
+DEMO_MODE = os.getenv('DEMO_MODE', 'False').lower() in ('1', 'true', 'yes', 'on')
 
 ZAPI_BASE_URL = os.getenv("ZAPI_BASE_URL", "https://api.z-api.io")
 ZAPI_INSTANCE_ID = os.getenv("ZAPI_INSTANCE_ID", "")
@@ -32,6 +33,10 @@ def _zapi_url(path: str) -> str:
 
 
 def _zapi_send_text(phone: str, message: str) -> Dict[str, Any]:
+    # In demo mode, skip outbound messaging entirely
+    if DEMO_MODE:
+        logger.info("[DEMO_MODE] Skipping Z-API outbound message")
+        return {"success": True, "skipped": True}
     # Build URL and gracefully handle missing configuration
     try:
         url = _zapi_url("/send-text")
