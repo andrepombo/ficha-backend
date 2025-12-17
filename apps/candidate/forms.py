@@ -328,7 +328,7 @@ class CandidateApplicationForm(forms.ModelForm):
             'referred_by': 'Indicado Por',
             'how_found_vacancy': 'Como ficou sabendo da vaga?',
             'how_found_vacancy_other': 'Outros - Especificar',
-            'worked_at_pinte_before': 'Já trabalhou na Pinte Pinturas antes?',
+            'worked_at_pinte_before': 'Já trabalhou na empresa antes?',
             'highest_education': 'Escolaridade',
             'currently_employed': 'Atualmente empregado',
             'availability_start': 'Disponibilidade para início',

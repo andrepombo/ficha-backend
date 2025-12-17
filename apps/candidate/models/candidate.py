@@ -180,7 +180,7 @@ class Candidate(models.Model):
     
     worked_at_pinte_before = models.CharField(
         max_length=10,
-        verbose_name='Já trabalhou na Pinte Pinturas antes?',
+        verbose_name='Já trabalhou na empressa antes?',
         choices=[
             ('sim', 'Sim'),
             ('nao', 'Não'),

@@ -42,7 +42,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='candidate',
             name='worked_at_pinte_before',
-            field=models.CharField(blank=True, choices=[('sim', 'Sim'), ('nao', 'Não')], default='', max_length=10, verbose_name='Já trabalhou na Pinte Pinturas antes?'),
+            field=models.CharField(blank=True, choices=[('sim', 'Sim'), ('nao', 'Não')], default='', max_length=10, verbose_name='Já trabalhou na empresa antes?'),
         ),
         migrations.AlterField(
             model_name='candidate',
