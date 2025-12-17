@@ -18,28 +18,7 @@ class DemoReadOnlyMiddleware:
 
     def __call__(self, request):
         demo_mode = getattr(settings, 'DEMO_MODE', False)
-        # In demo mode, auto-reset demo data daily at/after 03:00 local time
-        if demo_mode:
-            try:
-                now_local = timezone.localtime(timezone.now())
-                # Only run once per day after 03:00
-                last_key = 'demo_last_reset_date'
-                lock_key = 'demo_reset_lock'
-                last_reset = cache.get(last_key)
-                if now_local.hour >= 3:
-                    today = now_local.date().isoformat()
-                    if last_reset != today:
-                        # Acquire short lock to avoid concurrent resets across workers
-                        if cache.add(lock_key, '1', timeout=300):
-                            try:
-                                # Demo environment only: wipe and reseed candidates nightly
-                                call_command('seed_candidates_with_forms', count=30, delete_existing=True)
-                                cache.set(last_key, today, timeout=172800)  # keep for 2 days
-                            finally:
-                                cache.delete(lock_key)
-            except Exception:
-                # Never break requests due to reset failures
-                pass
+        # In demo mode, apply demo-specific restrictions (e.g. demo user behavior)
         if demo_mode and getattr(request, 'user', None) and request.user.is_authenticated:
             if request.user.username == self.demo_username:
                 path = request.path or ''

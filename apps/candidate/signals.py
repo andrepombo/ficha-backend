@@ -1,10 +1,21 @@
 """
 Signals for automatic score recalculation when questions are updated.
 """
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from decimal import Decimal
-from .models import Question, CandidateQuestionnaireResponse
+from django.conf import settings
+from django.core.cache import cache
+from .models import Question, CandidateQuestionnaireResponse, Candidate, ProfessionalExperience, Interview
+
+
+DEMO_DATA_DIRTY_FLAG = 'demo_data_dirty'
+
+
+def _mark_demo_data_dirty():
+    if not getattr(settings, 'DEMO_MODE', False):
+        return
+    cache.set(DEMO_DATA_DIRTY_FLAG, True, timeout=172800)
 
 
 @receiver(post_save, sender=Question)
@@ -136,4 +147,44 @@ def recalculate_scores_on_question_update(sender, instance, created, **kwargs):
         response.max_score = max_score
         response.save()
         
-        print(f"  ✓ Response {response.id}: {old_score} → {total_score}/{response.max_score}")
+        print(f"  Response {response.id}: {old_score} [1m[31m[0m {total_score}/{response.max_score}")
+
+
+@receiver(post_save, sender=Candidate)
+def mark_demo_data_dirty_on_candidate_save(sender, instance, created, **kwargs):
+    _mark_demo_data_dirty()
+
+
+@receiver(post_delete, sender=Candidate)
+def mark_demo_data_dirty_on_candidate_delete(sender, instance, **kwargs):
+    _mark_demo_data_dirty()
+
+
+@receiver(post_save, sender=ProfessionalExperience)
+def mark_demo_data_dirty_on_professional_experience_save(sender, instance, created, **kwargs):
+    _mark_demo_data_dirty()
+
+
+@receiver(post_delete, sender=ProfessionalExperience)
+def mark_demo_data_dirty_on_professional_experience_delete(sender, instance, **kwargs):
+    _mark_demo_data_dirty()
+
+
+@receiver(post_save, sender=Interview)
+def mark_demo_data_dirty_on_interview_save(sender, instance, created, **kwargs):
+    _mark_demo_data_dirty()
+
+
+@receiver(post_delete, sender=Interview)
+def mark_demo_data_dirty_on_interview_delete(sender, instance, **kwargs):
+    _mark_demo_data_dirty()
+
+
+@receiver(post_save, sender=CandidateQuestionnaireResponse)
+def mark_demo_data_dirty_on_response_save(sender, instance, created, **kwargs):
+    _mark_demo_data_dirty()
+
+
+@receiver(post_delete, sender=CandidateQuestionnaireResponse)
+def mark_demo_data_dirty_on_response_delete(sender, instance, **kwargs):
+    _mark_demo_data_dirty()
