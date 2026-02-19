@@ -309,6 +309,13 @@ class CandidateViewSet(viewsets.ModelViewSet):
         # Get month and year filters if provided
         month_filter = request.query_params.get('month', None)
         year_filter = request.query_params.get('year', None)
+
+        # In demo mode, default to July 2025 if no explicit month/year filters are provided
+        # Note: frontend sends 0-indexed month values (July = '6')
+        if DEMO_MODE and (not month_filter or month_filter == 'all') and (not year_filter or year_filter == 'all'):
+            month_filter = '6'
+            year_filter = '2025'
+
         queryset = Candidate.objects.all()
         
         if month_filter and month_filter != 'all':
@@ -427,10 +434,18 @@ class CandidateViewSet(viewsets.ModelViewSet):
         """
         from datetime import datetime, timedelta
         from django.db.models import Avg, F, ExpressionWrapper, DurationField
+        from core.settings import DEMO_MODE
         
         # Get month and year filters if provided
         month_filter = request.query_params.get('month', None)
         year_filter = request.query_params.get('year', None)
+
+        # In demo mode, default to July 2025 if no explicit month/year filters are provided
+        # Note: frontend sends 0-indexed month values (July = '6')
+        if DEMO_MODE and (not month_filter or month_filter == 'all') and (not year_filter or year_filter == 'all'):
+            month_filter = '6'
+            year_filter = '2025'
+
         queryset = Candidate.objects.all()
         
         if month_filter and month_filter != 'all':
@@ -864,6 +879,10 @@ class CandidateViewSet(viewsets.ModelViewSet):
         try:
             queryset = self.get_queryset()
             year = request.query_params.get('year', None)
+
+            # In demo mode, default to 2025 if no explicit year is provided
+            if DEMO_MODE and (not year or year == 'all'):
+                year = '2025'
             
             if year and year != 'all':
                 queryset = queryset.filter(applied_date__year=int(year))

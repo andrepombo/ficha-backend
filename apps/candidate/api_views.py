@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Count, Q
+from core.settings import DEMO_MODE
 from django.http import HttpResponse
 from datetime import datetime, timedelta
 from django.utils import timezone
@@ -60,6 +61,13 @@ class CandidateViewSet(viewsets.ModelViewSet):
         
         # Filter by month if provided
         month_filter = request.query_params.get('month', None)
+        year_filter = request.query_params.get('year', None)
+
+        # In demo mode, default to July 2025 if no explicit month/year filters are provided
+        if DEMO_MODE and (not month_filter or month_filter == 'all') and (not year_filter or year_filter == 'all'):
+            month_filter = '7'
+            year_filter = '2025'
+
         if month_filter and month_filter != 'all':
             try:
                 queryset = queryset.filter(applied_date__month=int(month_filter))
@@ -67,7 +75,6 @@ class CandidateViewSet(viewsets.ModelViewSet):
                 pass
         
         # Filter by year if provided
-        year_filter = request.query_params.get('year', None)
         if year_filter and year_filter != 'all':
             try:
                 queryset = queryset.filter(applied_date__year=int(year_filter))
@@ -542,10 +549,16 @@ class CandidateViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(position_applied=position_filter)
             
             month_filter = request.query_params.get('month', 'all')
+            year_filter = request.query_params.get('year', 'all')
+
+            # In demo mode, default to July 2025 if no explicit month/year filters are provided
+            if DEMO_MODE and month_filter == 'all' and year_filter == 'all':
+                month_filter = '7'
+                year_filter = '2025'
+
             if month_filter != 'all':
                 queryset = queryset.filter(applied_date__month=int(month_filter))
             
-            year_filter = request.query_params.get('year', 'all')
             if year_filter != 'all':
                 queryset = queryset.filter(applied_date__year=int(year_filter))
             
