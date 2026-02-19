@@ -11,8 +11,6 @@ concurrency:
 env:
   APP_BASE_URL: https://app1.andrepombo.info
 
-# FIX
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
