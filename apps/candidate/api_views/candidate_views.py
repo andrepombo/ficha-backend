@@ -887,89 +887,62 @@ class CandidateViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def export_analytics_pdf(self, request):
         """
-
-@action(detail=False, methods=['get'])
-def export_excel(self, request):
-    """
-    Export candidates report to Excel.
-    """
-    try:
-        # Get filtered candidates
-        queryset = self.filter_queryset(self.get_queryset())
-        
-        # Apply filters
-        status_filter = request.query_params.get('status', 'all')
-        if status_filter != 'all':
-            queryset = queryset.filter(status=status_filter)
-        
-        position_filter = request.query_params.get('position', 'all')
-        if position_filter != 'all':
-            queryset = queryset.filter(position_applied=position_filter)
-        
-        month_filter = request.query_params.get('month', 'all')
-        year_filter = request.query_params.get('year', 'all')
-
-        # In demo mode, default to July 2025 if no explicit month/year filters are provided
+        Export analytics report to PDF.
+        """
+        try:
+            queryset = self.get_queryset()
+            year = request.query_params.get('year', None)
             
-    # Apply filters
-    status_filter = request.query_params.get('status', 'all')
-    if status_filter != 'all':
-        queryset = queryset.filter(status=status_filter)
+            if year and year != 'all':
+                queryset = queryset.filter(applied_date__year=int(year))
             
-    position_filter = request.query_params.get('position', 'all')
-    if position_filter != 'all':
-        queryset = queryset.filter(position_applied=position_filter)
+            # Generate PDF
+            pdf_buffer = export_service.generate_analytics_pdf(list(queryset), year)
             
-    month_filter = request.query_params.get('month', 'all')
-    year_filter = request.query_params.get('year', 'all')
-
-    # In demo mode, default to July 2025 if no explicit month/year filters are provided
-    if settings.DEMO_MODE and month_filter == 'all' and year_filter == 'all':
-        month_filter = '7'
-        year_filter = '2025'
-
-    if month_filter != 'all':
-        queryset = queryset.filter(applied_date__month=int(month_filter))
+            # Create response
+            response = HttpResponse(pdf_buffer.getvalue(), content_type='application/pdf')
+            filename = f"analytics_{year if year else 'all'}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
             
-    if year_filter != 'all':
-        queryset = queryset.filter(applied_date__year=int(year_filter))
+            return response
             
-    search = request.query_params.get('search', '')
-    if search:
-        queryset = queryset.filter(
-            Q(full_name__icontains=search) |
-            Q(email__icontains=search) |
-            Q(position_applied__icontains=search)
-        )
+        except Exception as e:
+            logger.error(f"Error generating analytics PDF export: {e}")
+            return Response(
+                {'error': 'Failed to generate analytics PDF export'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['get'])
+    def export_analytics_excel(self, request):
+        """
+        Export analytics report to Excel.
+        """
+        try:
+            queryset = self.get_queryset()
+            year = request.query_params.get('year', None)
             
-    # Prepare filters for display
-    filters = {
-        'status': status_filter,
-        'position': position_filter,
-        'month': month_filter,
-        'year': year_filter,
-        'search': search
-    }
+            if year and year != 'all':
+                queryset = queryset.filter(applied_date__year=int(year))
             
-    # Generate Excel
-    excel_buffer = export_service.generate_candidates_excel(list(queryset), filters)
+            # Generate Excel
+            excel_buffer = export_service.generate_analytics_excel(list(queryset), year)
             
-    # Create response
-    response = HttpResponse(
-        excel_buffer.getvalue(),
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
-    filename = f"candidatos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            # Create response
+            response = HttpResponse(
+                excel_buffer.getvalue(),
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+            filename = f"analytics_{year if year else 'all'}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
             
-    return response
+            return response
             
-except Exception as e:
-    logger.error(f"Error generating Excel export: {e}")
-    return Response(
-        {'error': 'Failed to generate Excel export'},
-        status=status.HTTP_500_INTERNAL_SERVER_ERROR
-    )
+        except Exception as e:
+            logger.error(f"Error generating analytics Excel export: {e}")
+            return Response(
+                {'error': 'Failed to generate analytics Excel export'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
     @action(detail=True, methods=['post'])
