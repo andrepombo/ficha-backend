@@ -10,7 +10,7 @@ This package organizes models into separate modules for better maintainability:
 - questionnaire.py: Questionnaire templates and responses
 """
 
-from .candidate import Candidate, ProfessionalExperience
+from .candidate import Candidate, ProfessionalExperience, DemoVisitor
 from .interview import Interview
 from .scoring import ScoringWeight
 from .activity_log import ActivityLog
@@ -26,6 +26,7 @@ from .questionnaire import (
 __all__ = [
     'Candidate',
     'ProfessionalExperience',
+    'DemoVisitor',
     'Interview',
     'ScoringWeight',
     'ActivityLog',

@@ -12,6 +12,7 @@ from .models import (
     QuestionOption,
     CandidateQuestionnaireResponse,
     CandidateSelectedOption,
+    DemoVisitor,
 )
 
 
@@ -306,8 +307,6 @@ class ScoringWeightAdmin(admin.ModelAdmin):
     
     list_display = [
         '__str__',
-        'is_active',
-        'get_total_display',
         'created_at',
         'updated_at',
     ]
@@ -317,7 +316,7 @@ class ScoringWeightAdmin(admin.ModelAdmin):
         'created_at',
     ]
     
-    readonly_fields = ['created_at', 'updated_at', 'get_total_display']
+    readonly_fields = ['created_at', 'updated_at']
     
     fieldsets = (
         ('Experiência & Habilidades', {
@@ -360,26 +359,25 @@ class ScoringWeightAdmin(admin.ModelAdmin):
             'fields': (
                 'created_at',
                 'updated_at',
-                'get_total_display',
             ),
             'classes': ('collapse',),
         }),
     )
     
-    def get_total_display(self, obj):
-        """Display total points."""
-        total = obj.get_total_points()
-        if abs(total - 100) < 0.1:
-            return f'{total} pontos ✓'
-        else:
-            return f'{total} pontos ⚠️ (deve ser 100)'
-    get_total_display.short_description = 'Total de Pontos'
+    def has_add_permission(self, request):
+        """Disable manual creation of responses (should be done via API)."""
+        return False
     
-    def save_model(self, request, obj, form, change):
-        """Override save to set created_by."""
-        if not change:  # Only set on creation
-            obj.created_by = request.user
-        super().save_model(request, obj, form, change)
+    def has_delete_permission(self, request, obj=None):
+        # Prevent deletion of this critical configuration
+        return False
+
+
+@admin.register(DemoVisitor)
+class DemoVisitorAdmin(admin.ModelAdmin):
+    list_display = ('email', 'first_seen', 'last_seen', 'visit_count')
+    search_fields = ('email',)
+    ordering = ('-last_seen',)
 
 
 @admin.register(ActivityLog)

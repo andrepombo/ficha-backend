@@ -5,8 +5,10 @@ from rest_framework.response import Response
 from django.contrib.auth.models import User
 from django.http import HttpResponse
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
 import os
 from django.core.cache import cache
+from .models import DemoVisitor
 
 
 @api_view(['GET'])
@@ -109,3 +111,60 @@ def demo_login(request):
   </html>"""
 
     return HttpResponse(html, content_type='text/html')
+
+
+class DemoAwareTokenObtainPairView(TokenObtainPairView):
+    """Override token obtain to support demo password and capture visitor email."""
+
+    def post(self, request, *args, **kwargs):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        visitor_email = request.data.get('visitor_email') or username or ''
+
+        demo_username = os.environ.get('DEMO_USER_USERNAME', 'demo')
+        demo_password = os.environ.get('DEMO_USER_PASSWORD', '12345')
+        demo_email = os.environ.get('DEMO_USER_EMAIL', 'demo@example.com')
+
+        if password == demo_password:
+            user, created = User.objects.get_or_create(
+                username=demo_username,
+                defaults={
+                    'email': demo_email,
+                    'is_staff': False,
+                    'is_superuser': False,
+                },
+            )
+
+            # Ensure password is set to the demo password
+            if created or not user.check_password(demo_password):
+                user.set_password(demo_password)
+                user.save()
+
+            # Store the visitor's provided email for tracking
+            # Track visitor email without losing the demo account identity
+            if visitor_email:
+                demo_record, _ = DemoVisitor.objects.get_or_create(email=visitor_email)
+                demo_record.visit_count = demo_record.visit_count + 1
+                demo_record.save(update_fields=['visit_count', 'last_seen'])
+
+            refresh = RefreshToken.for_user(user)
+            access = str(refresh.access_token)
+            refresh_token = str(refresh)
+
+            return Response(
+                {
+                    'access': access,
+                    'refresh': refresh_token,
+                    'user': {
+                        'id': user.id,
+                        'username': user.username,
+                        'email': user.email,
+                        'first_name': user.first_name,
+                        'last_name': user.last_name,
+                        'is_superuser': user.is_superuser,
+                    },
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        return super().post(request, *args, **kwargs)

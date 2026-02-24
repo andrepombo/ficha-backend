@@ -4,6 +4,21 @@ from django.contrib.auth.models import User
 import json
 
 
+class DemoVisitor(models.Model):
+    email = models.EmailField(unique=True, verbose_name='Email')
+    first_seen = models.DateTimeField(auto_now_add=True, verbose_name='First Seen')
+    last_seen = models.DateTimeField(auto_now=True, verbose_name='Last Seen')
+    visit_count = models.PositiveIntegerField(default=1, verbose_name='Visit Count')
+
+    class Meta:
+        verbose_name = 'Demo User'
+        verbose_name_plural = 'Demo Users'
+        ordering = ['-last_seen']
+
+    def __str__(self):
+        return self.email
+
+
 class Candidate(models.Model):
     """
     Model to store candidate information for job applications.
